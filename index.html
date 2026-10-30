@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>V6 Engine 3D Presentation</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
+
+    :root {
+      --dark-azure: #00638E;
+      --paper-white: #FFFFFF;
+      --onyx: #07090D;
+      --light-azure: #BFD8E3;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Outfit', sans-serif;
+      background-color: var(--onyx);
+      color: var(--paper-white);
+    }
+
+    #webgl-container {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 1;
+    }
+
+    .ambient-glow {
+      position: absolute;
+      top: 40%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 900px; height: 900px;
+      background: radial-gradient(circle, rgba(0, 99, 142, 0.35) 0%, rgba(7, 9, 13, 0) 70%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .grid-corner {
+      position: absolute;
+      bottom: 0; left: 0;
+      width: 550px; height: 550px;
+      background-image: 
+        linear-gradient(rgba(191, 216, 227, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(191, 216, 227, 0.08) 1px, transparent 1px);
+      background-size: 35px 35px;
+      mask-image: radial-gradient(circle at bottom left, rgba(0,0,0,0.85) 0%, transparent 70%);
+      -webkit-mask-image: radial-gradient(circle at bottom left, rgba(0,0,0,0.85) 0%, transparent 70%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    .ui-layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 35px 45px;
+    }
+
+    .interactive { pointer-events: auto; }
+
+    .top-right-bar {
+      position: absolute;
+      top: 35px; right: 45px;
+      z-index: 20;
+    }
+
+    .btn-minimal {
+      background: rgba(18, 22, 26, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(191, 216, 227, 0.3);
+      color: var(--light-azure);
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    .btn-minimal:hover {
+      background: var(--dark-azure);
+      color: #FFF;
+      border-color: var(--light-azure);
+    }
+
+    .giant-counter {
+      position: absolute;
+      top: 150px; left: 45px;
+      font-size: 3rem;
+      font-weight: 900;
+      color: var(--light-azure);
+      letter-spacing: 2px;
+      z-index: 15;
+      pointer-events: none;
+      text-shadow: 0 0 20px rgba(0, 99, 142, 0.5);
+    }
+
+    .top-banner {
+      position: absolute;
+      top: 35px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-20px);
+      background: rgba(15, 20, 26, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(191, 216, 227, 0.25);
+      padding: 12px 32px;
+      text-align: center;
+      max-width: 650px;
+      border-radius: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+    }
+    .top-banner.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+      pointer-events: auto;
+    }
+    .top-banner h5 {
+      color: var(--light-azure);
+      font-size: 0.75rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .top-banner p {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.9rem;
+    }
+
+    .main-content {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      margin-top: 180px;
+    }
+
+    .cards-container {
+      display: flex;
+      gap: 40px;
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .info-card {
+      background: rgba(18, 22, 26, 0.8);
+      backdrop-filter: blur(25px);
+      -webkit-backdrop-filter: blur(25px);
+      border: 1px solid rgba(191, 216, 227, 0.25);
+      border-top: 1px solid rgba(191, 216, 227, 0.45);
+      border-left: 5px solid var(--dark-azure);
+      padding: 35px;
+      border-radius: 24px;
+      width: 460px;
+      min-height: 320px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(0, 99, 142, 0.2);
+      transition: transform 0.2s ease, border-color 0.3s ease;
+      transform-style: preserve-3d;
+      perspective: 1000px;
+    }
+
+    .info-card:hover {
+      border-color: var(--light-azure);
+      box-shadow: 0 35px 70px rgba(0, 0, 0, 0.85), 0 0 45px rgba(0, 99, 142, 0.4);
+    }
+
+    .info-card h4 {
+      font-size: 0.85rem;
+      color: var(--light-azure);
+      text-transform: uppercase;
+      letter-spacing: 2.5px;
+      margin-bottom: 10px;
+    }
+
+    .info-card h2 {
+      font-size: 1.65rem;
+      color: var(--paper-white);
+      margin-bottom: 14px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+    }
+
+    .info-card p {
+      color: rgba(255, 255, 255, 0.88);
+      font-size: 0.95rem;
+      line-height: 1.65;
+    }
+
+    .info-card ul {
+      margin-top: 12px;
+      padding-left: 18px;
+      color: var(--light-azure);
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .hero-title-container {
+      position: absolute;
+      top: 35px; left: 45px;
+      text-align: left;
+      z-index: 15;
+      pointer-events: none;
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+    .hero-title-container.hidden {
+      opacity: 0;
+      transform: translateY(-20px);
+      pointer-events: none;
+    }
+    .hero-title-container h1 {
+      font-size: 5rem;
+      font-weight: 900;
+      letter-spacing: -1px;
+      line-height: 0.95;
+      background: linear-gradient(135deg, #FFFFFF 20%, var(--light-azure) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 15px 35px rgba(0,0,0,0.8);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+    .hero-title-container p {
+      font-size: 1.15rem;
+      color: rgba(191, 216, 227, 0.85);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    footer {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      padding: 0 10px;
+    }
+
+    .controls { display: flex; gap: 12px; }
+
+    .btn {
+      background: rgba(25, 32, 40, 0.85);
+      color: var(--paper-white);
+      border: 1px solid rgba(191, 216, 227, 0.3);
+      padding: 14px 30px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: all 0.25s ease;
+      backdrop-filter: blur(10px);
+    }
+
+    .btn:hover {
+      background: var(--dark-azure);
+      border-color: var(--light-azure);
+      box-shadow: 0 0 25px rgba(0, 99, 142, 0.7);
+    }
+
+    #loading-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: var(--onyx);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      transition: opacity 0.8s ease;
+    }
+
+    .spinner {
+      width: 50px; height: 50px;
+      border: 3px solid rgba(191, 216, 227, 0.1);
+      border-top-color: var(--dark-azure);
+      border-radius: 50%;
+      animation: spin 1s infinite linear;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+</head>
+<body>
+
+  <div id="loading-overlay">
+    <div class="spinner"></div>
+    <h3 style="color: var(--light-azure); font-weight: 600;" id="loading-text">Loading V6 Engine Assembly...</h3>
+  </div>
+
+  <div class="ambient-glow"></div>
+  <div class="grid-corner"></div>
+
+  <div class="giant-counter" id="giant-num">PAGE 01 / 06</div>
+
+  <div class="top-right-bar interactive">
+    <button class="btn-minimal" id="fullscreen-btn">Fullscreen ⛶</button>
+  </div>
+
+  <div class="hero-title-container" id="hero-title">
+    <h1>V6 POWERHOUSE</h1>
+    <p>High-Performance Engine Architecture & Mechanics</p>
+  </div>
+
+  <div class="ui-layer">
+    <div></div>
+
+    <div class="top-banner interactive" id="top-banner">
+      <h5 id="banner-sub">ENGINEERING MODULE</h5>
+      <p id="banner-text">High-efficiency structural configuration.</p>
+    </div>
+
+    <div class="main-content">
+      <div class="cards-container">
+        <div class="info-card interactive" id="card-1">
+          <h4 id="card1-sub">OVERVIEW</h4>
+          <h2 id="card1-title">V6 Architecture</h2>
+          <p id="card1-text">Optimized 60-degree block angle geometry designed to ensure maximum mechanical balance, uniform firing intervals, and minimal operational vibration across all power bands.</p>
+          <ul id="card1-list">
+            <li>Bore & Stroke: 85.0mm x 88.0mm</li>
+            <li>Compression Ratio: 10.5:1</li>
+            <li>Peak Power Output: 450 HP @ 6,800 RPM</li>
+          </ul>
+        </div>
+        <div class="info-card interactive" id="card-2">
+          <h4 id="card2-sub">DYNAMICS</h4>
+          <h2 id="card2-title">Mass Balance</h2>
+          <p id="card2-text">Precise counterweight integration and reciprocating component balancing drastically reduce inertial friction losses and boost high-RPM throttle responsiveness.</p>
+          <ul id="card2-list">
+            <li>Forged Steel Crankshaft Journaling</li>
+            <li>Dual Counter-rotating Balancer Shafts</li>
+            <li>Reduced Parasitic Drag by 14%</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <footer>
+      <div class="controls interactive">
+        <button class="btn" id="prev-btn">← Prev</button>
+        <button class="btn" id="next-btn">Next →</button>
+      </div>
+    </footer>
+  </div>
+
+  <div id="webgl-container"></div>
+
+  <script>
+    const slides = [
+      {
+        sub1: "OVERVIEW", title1: "V6 Architecture", 
+        text1: "Optimized 60-degree block angle geometry designed to ensure maximum mechanical balance, uniform firing intervals, and minimal operational vibration across all power bands.",
+        list1: ["Bore & Stroke: 85.0mm x 88.0mm", "Compression Ratio: 10.5:1", "Peak Power Output: 450 HP @ 6,800 RPM"],
+        sub2: "DYNAMICS", title2: "Mass Balance", 
+        text2: "Precise counterweight integration and reciprocating component balancing drastically reduce inertial friction losses and boost high-RPM throttle responsiveness.",
+        list2: ["Forged Steel Crankshaft Journaling", "Dual Counter-rotating Balancer Shafts", "Reduced Parasitic Drag by 14%"],
+        cam: { x: 3.2, y: 2.2, z: 3.2 }, target: { x: 0, y: 0, z: 0 }, hasBanner: false
+      },
+      {
+        sub1: "AIRFLOW", title1: "Intake Filtration", 
+        text1: "Zero-resistance dual filtration setup combined with variable geometry plenums guarantees smooth, laminar air delivery directly into multi-valve combustion chambers.",
+        list1: ["Dual 75mm Electronic Throttle Bodies", "Variable Intake Runner Lengths", "Laminar Flow Volume: 850 CFM"],
+        sub2: "EFFICIENCY", title2: "Boost Dynamics", 
+        text2: "Computer-simulated runner lengths minimize fluid boundary turbulence, ensuring peak volumetric efficiency under maximum throttle loads.",
+        list2: ["Direct Cylinder Port Injection", "Integrated Charge Air Coolers", "Peak Boost Pressure: 1.4 Bar"],
+        cam: { x: 0, y: -0.4, z: 2.6 }, target: { x: 0, y: 0.3, z: 0 }, hasBanner: true,
+        bannerSub: "AIR INTAKE MODULE (SLIDE 02)", bannerText: "Integrated dynamic airflow pressurization and multi-point injection routing system."
+      },
+      {
+        sub1: "RIGHT SIDE", title1: "Timing & Drive", 
+        text1: "Heavy-duty multi-link silent chain drive mechanism engineered for extreme load endurance, precise valve timing synchronization, and minimal elongation over lifecycle.",
+        list1: ["Dual Overhead Camshaft (DOHC)", "Variable Valve Timing (VVT-iW)", "Hardened Nitrogen-Treated Sprockets"],
+        sub2: "RELIABILITY", title2: "Thermal Control", 
+        text2: "Reinforced hydraulic tensioners and optimized oil gallery routing prevent slip and maintain stable tension during rapid thermal expansion cycles.",
+        list2: ["High-Pressure Oil Feed Jets", "Synthetic Thermal Fluid Cooling", "Zero-Maintenance Guide Vanes"],
+        cam: { x: 4.0, y: 0.1, z: 0.2 }, target: { x: 0, y: 0, z: 0 }, hasBanner: false
+      },
+      {
+        sub1: "REAR VIEW", title1: "Flywheel & Housing", 
+        text1: "Massive high-inertia cast housing ensures rigid coupling with the transmission assembly, damping torsional crankshaft vibrations effectively.",
+        list1: ["Dual-Mass Flywheel Construction", "Reinforced Bellhousing Flange", "High-Torque Friction Surface"],
+        sub2: "TORQUE", title2: "Power Delivery", 
+        text2: "Even load distribution across main bearing journals eliminates crank bed deflection under peak torque output, safeguarding internal tolerances.",
+        list2: ["Peak Torque: 580 Nm @ 3,200 RPM", "Hardened Ring Gear Tooth Profile", "Zero Flex Main Bearing Caps"],
+        cam: { x: 0, y: 0.3, z: -4.0 }, target: { x: 0, y: -0.1, z: 0 }, hasBanner: false
+      },
+      {
+        sub1: "TOP VIEW", title1: "Valve Covers", 
+        text1: "Sealed lightweight aluminum alloy head covers protect dual overhead camshafts while housing integrated positive crankcase ventilation oil separators.",
+        list1: ["Billet Magnesium-Alloy Finish", "Integrated Ignition Coil Packs", "Multi-Stage PCV Baffle System"],
+        sub2: "LAYOUT", title2: "Compact Form", 
+        text2: "Tight peripheral component arrangement minimizes total engine bay footprint, allowing optimal weight distribution within the chassis layout.",
+        list2: ["Low Center of Gravity Design", "Ultra-Short Harness Routing", "Quick-Release Maintenance Access"],
+        cam: { x: 0, y: 4.8, z: 0.05 }, target: { x: 0, y: 0, z: 0 }, hasBanner: true,
+        bannerSub: "VALVE TRAIN CONTOUR (SLIDE 05)", bannerText: "Advanced heat-dissipating alloy cylinder heads with sodium-filled exhaust valves."
+      },
+      {
+        sub1: "FINAL ASSEMBLY", title1: "Complete Unit", 
+        text1: "All structural subsystems seamlessly integrated into a high-performance digital powertrain ready for real-time engineering evaluation.",
+        list1: ["Total Dry Weight: 175 kg", "MIL-STD Thermal Resilience", "100% CAD Assembly Precision"],
+        sub2: "READY", title2: "Production Grade", 
+        text2: "Fully optimized real-time interactive presentation model featuring advanced PBR shaders, dynamic lighting, and precise geometric proportions.",
+        list2: ["Interactive Camera Angles", "Real-Time Shader Materials", "Ready for Simulation Integration"],
+        cam: { x: -3.0, y: 2.6, z: -3.0 }, target: { x: 0, y: 0, z: 0 }, hasBanner: false
+      }
+    ];
+
+    let currentSlide = 0;
+    let model;
+
+    const container = document.getElementById('webgl-container');
+    const scene = new THREE.Scene();
+
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(3.2, 2.2, 3.2);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.35;
+    container.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enabled = false;
+
+    scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+    
+    const keyLight = new THREE.DirectionalLight(0xBFD8E3, 3.8);
+    keyLight.position.set(5, 10, 7);
+    scene.add(keyLight);
+
+    const fillLight = new THREE.DirectionalLight(0x00638E, 3.5);
+    fillLight.position.set(-6, -3, -5);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xBFD8E3, 3.2);
+    rimLight.position.set(0, 5, -8);
+    scene.add(rimLight);
+
+    /* ЯРКИЕ И КРУПНЫЕ ЗВЕЗДЫ */
+    const starCount = 350;
+    const starGeo = new THREE.BufferGeometry();
+    const starPos = new Float32Array(starCount * 3);
+    for(let i = 0; i < starCount * 3; i += 3) {
+      starPos[i] = (Math.random() - 0.5) * 30;
+      starPos[i+1] = (Math.random() - 0.5) * 30;
+      starPos[i+2] = (Math.random() - 0.5) * 30 - 2;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+    const starMat = new THREE.PointsMaterial({
+      color: 0xBFD8E3,
+      size: 0.12,
+      transparent: true,
+      opacity: 0.85
+    });
+    const starField = new THREE.Points(starGeo, starMat);
+    scene.add(starField);
+
+    /* ДЕТАЛИЗИРОВАННЫЙ АМОГУС */
+    const amongGroup = new THREE.Group();
+    const suitMat = new THREE.MeshStandardMaterial({ color: 0xFF3344, roughness: 0.2, metalness: 0.1 });
+    const visorMat = new THREE.MeshPhysicalMaterial({ color: 0x66CCFF, roughness: 0.1, metalness: 0.9, transmission: 0.5, transparent: true, opacity: 0.9 });
+
+    const bodyGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.4, 24);
+    const bodyMesh = new THREE.Mesh(bodyGeo, suitMat);
+    amongGroup.add(bodyMesh);
+
+    const headGeo = new THREE.SphereGeometry(0.18, 24, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const headMesh = new THREE.Mesh(headGeo, suitMat);
+    headMesh.position.y = 0.2;
+    amongGroup.add(headMesh);
+
+    const legGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.15, 16);
+    const legLeft = new THREE.Mesh(legGeo, suitMat);
+    legLeft.position.set(-0.08, -0.25, 0);
+    amongGroup.add(legLeft);
+
+    const legRight = new THREE.Mesh(legGeo, suitMat);
+    legRight.position.set(0.08, -0.25, 0);
+    amongGroup.add(legRight);
+
+    const visorGeo = new THREE.SphereGeometry(0.11, 24, 16);
+    visorGeo.scale(1.2, 0.7, 0.6);
+    const visorMesh = new THREE.Mesh(visorGeo, visorMat);
+    visorMesh.position.set(0, 0.12, 0.14);
+    amongGroup.add(visorMesh);
+
+    const packGeo = new THREE.BoxGeometry(0.16, 0.26, 0.12);
+    const packMesh = new THREE.Mesh(packGeo, suitMat);
+    packMesh.position.set(0, 0, -0.16);
+    amongGroup.add(packMesh);
+
+    const amogusLight = new THREE.PointLight(0xffffff, 2, 5);
+    amogusLight.position.set(-3.5, 2.5, -3);
+    scene.add(amogusLight);
+
+    amongGroup.position.set(-3.5, 1.6, -4);
+    amongGroup.scale.setScalar(1.2);
+    scene.add(amongGroup);
+
+    const loader = new THREE.GLTFLoader();
+    
+    function loadEngineModel(paths, index) {
+      if (index >= paths.length) {
+        document.getElementById('loading-text').innerText = "Error: engineV6.glb file not found in folder!";
+        document.getElementById('loading-text').style.color = "#ff4444";
+        return;
+      }
+      loader.load(paths[index], (gltf) => {
+        model = gltf.scene;
+        
+        // ПОКРАСКА ДЕТАЛЕЙ МОТОРА РАЗНЫМИ ЦВЕТАМИ (по образцу фото)
+        let meshIndex = 0;
+        model.traverse((child) => {
+          if (child.isMesh) {
+            // Создаем отдельный материал для каждой детали, чтобы они не были связаны
+            child.material = child.material.clone();
+            child.material.metalness = 0.85;
+            child.material.roughness = 0.25;
+
+            // Распределяем цвета в зависимости от порядка или имени узла
+            if (meshIndex % 6 === 0) {
+              child.material.color.setHex(0xE2E8F0); // Светло-серебристый алюминий
+              child.material.roughness = 0.2;
+            } else if (meshIndex % 6 === 1) {
+              child.material.color.setHex(0x334155); // Темно-серый графит (блок)
+              child.material.metalness = 0.9;
+            } else if (meshIndex % 6 === 2) {
+              child.material.color.setHex(0x94A3B8); // Стальной благородный
+            } else if (meshIndex % 6 === 3) {
+              child.material.color.setHex(0x64748B); // Матовый срез металла
+            } else if (meshIndex % 6 === 4) {
+              child.material.color.setHex(0xCBD5E1); // Блестящий хромированный элемент
+              child.material.roughness = 0.15;
+            } else {
+              child.material.color.setHex(0x475569); // Темный литой металл
+            }
+            
+            child.material.needsUpdate = true;
+            meshIndex++;
+          }
+        });
+
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
+        const scale = 2.2 / Math.max(size.x, size.y, size.z);
+        model.scale.setScalar(scale);
+        model.position.sub(center.multiplyScalar(scale));
+
+        scene.add(model);
+
+        document.getElementById('loading-overlay').style.opacity = '0';
+        setTimeout(() => document.getElementById('loading-overlay').style.display = 'none', 800);
+        
+        goToSlide(0);
+      }, undefined, () => {
+        loadEngineModel(paths, index + 1);
+      });
+    }
+
+    loadEngineModel(['engineV6.glb', './engineV6.glb', 'engineV6', './engineV6'], 0);
+
+    function goToSlide(index) {
+      currentSlide = index;
+      const s = slides[currentSlide];
+
+      document.getElementById('giant-num').innerText = `PAGE 0${currentSlide + 1} / 06`;
+
+      gsap.to("#card-1", { opacity: 0, y: 15, duration: 0.25, onComplete: () => {
+        document.getElementById('card1-sub').innerText = s.sub1;
+        document.getElementById('card1-title').innerText = s.title1;
+        document.getElementById('card1-text').innerText = s.text1;
+        document.getElementById('card1-list').innerHTML = s.list1.map(item => `<li>${item}</li>`).join('');
+        gsap.to("#card-1", { opacity: 1, y: 0, duration: 0.45 });
+      }});
+
+      gsap.to("#card-2", { opacity: 0, y: 15, duration: 0.25, onComplete: () => {
+        document.getElementById('card2-sub').innerText = s.sub2;
+        document.getElementById('card2-title').innerText = s.title2;
+        document.getElementById('card2-text').innerText = s.text2;
+        document.getElementById('card2-list').innerHTML = s.list2.map(item => `<li>${item}</li>`).join('');
+        gsap.to("#card-2", { opacity: 1, y: 0, duration: 0.45 });
+      }});
+
+      const hero = document.getElementById('hero-title');
+      if (currentSlide === 0) {
+        hero.classList.remove('hidden');
+      } else {
+        hero.classList.add('hidden');
+      }
+
+      const banner = document.getElementById('top-banner');
+      if (s.hasBanner) {
+        document.getElementById('banner-sub').innerText = s.bannerSub;
+        document.getElementById('banner-text').innerText = s.bannerText;
+        banner.classList.add('visible');
+      } else {
+        banner.classList.remove('visible');
+      }
+
+      gsap.to(camera.position, {
+        x: s.cam.x,
+        y: s.cam.y,
+        z: s.cam.z,
+        duration: 2.5,
+        ease: "expo.out",
+        onUpdate: () => controls.update()
+      });
+
+      gsap.to(controls.target, {
+        x: s.target.x,
+        y: s.target.y,
+        z: s.target.z,
+        duration: 2.5,
+        ease: "expo.out",
+        onUpdate: () => controls.update()
+      });
+    }
+
+    document.querySelectorAll('.info-card').forEach(card => {
+      card.addEventListener('mousemove', (e) => {
+        const rect = card.getBoundingClientRect();
+        const x = e.clientX - rect.left - rect.width / 2;
+        const y = e.clientY - rect.top - rect.height / 2;
+        gsap.to(card, {
+          rotateY: x * 0.03,
+          rotateX: -y * 0.03,
+          transformPerspective: 1000,
+          duration: 0.2,
+          ease: "power2.out"
+        });
+      });
+      card.addEventListener('mouseleave', () => {
+        gsap.to(card, { rotateX: 0, rotateY: 0, duration: 0.5, ease: "power2.out" });
+      });
+    });
+
+    document.getElementById('fullscreen-btn').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    document.getElementById('next-btn').addEventListener('click', () => goToSlide((currentSlide + 1) % slides.length));
+    document.getElementById('prev-btn').addEventListener('click', () => goToSlide((currentSlide - 1 + slides.length) % slides.length));
+
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const elapsedTime = clock.getElapsedTime();
+      
+      starField.rotation.y = elapsedTime * 0.012;
+      amongGroup.rotation.y = elapsedTime * 0.5;
+      amongGroup.position.y = 1.6 + Math.sin(elapsedTime * 1.2) * 0.15;
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+  </script>
+</body>
+</html>
